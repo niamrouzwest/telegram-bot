@@ -8,6 +8,17 @@ from telegram.ext import (
     filters
 )
 
+# 🔥 ДОБАВЛЕНО: фиктивный веб-сервер для Render (PORT FIX)
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import threading
+
+def run_server():
+    server = HTTPServer(("0.0.0.0", 10000), BaseHTTPRequestHandler)
+    server.serve_forever()
+
+threading.Thread(target=run_server, daemon=True).start()
+
+
 TOKEN = "8601228433:AAHcShB35RepfaLPyGU2y-thhDoCiWwH0PQ"
 YOUR_CHAT_ID = 164564542
 
