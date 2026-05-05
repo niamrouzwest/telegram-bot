@@ -8,7 +8,7 @@ from telegram.ext import (
     filters
 )
 
-TOKEN = os.getenv("8601228433:AAHcShB35RepfaLPyGU2y-thhDoCiWwH0PQ")
+TOKEN = "8601228433:AAHcShB35RepfaLPyGU2y-thhDoCiWwH0PQ"
 YOUR_CHAT_ID = 164564542
 
 keyboard = [["📖 Отправить цитату"]]
