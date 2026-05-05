@@ -14,7 +14,12 @@ YOUR_CHAT_ID = 164564542
 keyboard = [["📖 Отправить цитату"]]
 markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
+# ─────────────────────────────
+# START
+# ─────────────────────────────
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data.clear()
+
     await update.message.reply_text(
         "📖 Добро пожаловать в тихое место для слов - Цитаты недели📚BOM: Booklovers Of Moldova\n\n"
         "Здесь можно оставить цитату, которая зацепила, согрела или не отпускает.\n"
@@ -22,28 +27,35 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=markup
     )
 
+# ─────────────────────────────
+# MAIN LOGIC
+# ─────────────────────────────
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
+    step = context.user_data.get("step")
 
-    # шаг 1 — нажали кнопку
-    if text == "📖 Отправить цитату":
-        context.user_data["step"] = "quote"
-        await update.message.reply_text("Отправь цитату ✍️")
+    # 🔒 1. ЕСЛИ СЦЕНАРИЙ НЕ НАЧАТ — ИГНОР ВСЕГО
+    if step is None:
+        if text == "📖 Отправить цитату":
+            context.user_data["step"] = "quote"
+            await update.message.reply_text("Отправь цитату ✍️")
+        else:
+            await update.message.reply_text("Нажми кнопку 📖 «Отправить цитату»")
         return
 
-    # шаг 2 — получили цитату
-    if context.user_data.get("step") == "quote":
-        if not text.strip():
+    # ✍️ 2. ПОЛУЧАЕМ ЦИТАТУ
+    if step == "quote":
+        if not text or not text.strip():
             return
 
-        context.user_data["quote_text"] = text
+        context.user_data["quote_text"] = text.strip()
         context.user_data["step"] = "source"
 
         await update.message.reply_text("Из какой это книги? 📚")
         return
 
-    # шаг 3 — получили источник
-    if context.user_data.get("step") == "source":
+    # 📚 3. ПОЛУЧАЕМ КНИГУ И ОТПРАВЛЯЕМ
+    if step == "source":
         source = text.strip()
         quote = context.user_data.get("quote_text", "")
 
@@ -54,9 +66,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text("Цитата отправлена ✨")
 
-        # сброс состояния
+        # 🔄 сброс состояния
         context.user_data.clear()
 
+# ─────────────────────────────
+# MAIN
+# ─────────────────────────────
 def main():
     app = Application.builder().token(TOKEN).build()
 
