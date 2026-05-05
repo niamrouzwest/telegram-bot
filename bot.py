@@ -1,4 +1,7 @@
 import os
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import (
     Application,
@@ -8,22 +11,28 @@ from telegram.ext import (
     filters
 )
 
-# 🔥 ДОБАВЛЕНО: фиктивный веб-сервер для Render (PORT FIX)
-from http.server import BaseHTTPRequestHandler, HTTPServer
-import threading
-
-def run_server():
-    server = HTTPServer(("0.0.0.0", 10000), BaseHTTPRequestHandler)
-    server.serve_forever()
-
-threading.Thread(target=run_server, daemon=True).start()
-
-
 TOKEN = "8601228433:AAHcShB35RepfaLPyGU2y-thhDoCiWwH0PQ"
 YOUR_CHAT_ID = 164564542
 
 keyboard = [["📖 Отправить цитату"]]
 markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+# ─────────────────────────────
+# 🔥 WEB SERVER (ДЛЯ RENDER PORT CHECK)
+# ─────────────────────────────
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"OK")
+
+def run_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), HealthHandler)
+    server.serve_forever()
+
+threading.Thread(target=run_server, daemon=True).start()
 
 # ─────────────────────────────
 # START
@@ -32,10 +41,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
 
     await update.message.reply_text(
-        "📖 Добро пожаловать в тихое место для слов - Цитаты недели📚BOM: Booklovers Of Moldova\n\n"
+        "📖 Добро пожаловать в тихое место для слов - Цитаты недели\n"
+        "📚 <a href='https://t.me/bombooklovers'>BOM: Booklovers Of Moldova</a>\n\n"
         "Здесь можно оставить цитату, которая зацепила, согрела или не отпускает.\n"
         "Нажми кнопку ниже ✍️",
-        reply_markup=markup
+        reply_markup=markup,
+        parse_mode="HTML"
     )
 
 # ─────────────────────────────
@@ -45,7 +56,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     step = context.user_data.get("step")
 
-    # 🔒 1. ЕСЛИ СЦЕНАРИЙ НЕ НАЧАТ — ИГНОР ВСЕГО
     if step is None:
         if text == "📖 Отправить цитату":
             context.user_data["step"] = "quote"
@@ -54,21 +64,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("Нажми кнопку 📖 «Отправить цитату»")
         return
 
-    # ✍️ 2. ПОЛУЧАЕМ ЦИТАТУ
     if step == "quote":
-        if not text or not text.strip():
-            return
-
         context.user_data["quote_text"] = text.strip()
         context.user_data["step"] = "source"
-
         await update.message.reply_text("Из какой это книги? 📚")
         return
 
-    # 📚 3. ПОЛУЧАЕМ КНИГУ И ОТПРАВЛЯЕМ
     if step == "source":
-        source = text.strip()
         quote = context.user_data.get("quote_text", "")
+        source = text.strip()
 
         await context.bot.send_message(
             chat_id=YOUR_CHAT_ID,
@@ -76,8 +80,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         await update.message.reply_text("Цитата отправлена ✨")
-
-        # 🔄 сброс состояния
         context.user_data.clear()
 
 # ─────────────────────────────
