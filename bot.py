@@ -84,10 +84,13 @@ def home():
     return "Bot is running", 200
 
 @app_flask.route("/webhook", methods=["POST"])
-async def webhook():
+def webhook():
     data = request.get_json(force=True)
     update = Update.de_json(data, application.bot)
-    await application.process_update(update)
+
+    import asyncio
+    asyncio.run(application.process_update(update))
+
     return "ok"
 
 # ─────────────────────────────
