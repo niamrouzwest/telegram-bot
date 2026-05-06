@@ -99,7 +99,13 @@ def webhook():
     update = Update.de_json(data, application.bot)
 
     import asyncio
-    asyncio.run(application.process_update(update))
+
+    loop = asyncio.get_event_loop()
+
+    if loop.is_running():
+        asyncio.create_task(application.process_update(update))
+    else:
+        loop.run_until_complete(application.process_update(update))
 
     return "ok"
 
