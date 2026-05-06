@@ -1,5 +1,6 @@
 import os
 from flask import Flask, request
+USER_STATE = {}
 
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import (
@@ -37,28 +38,37 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text
-    step = context.user_data.get("step")
+    user_id = update.effective_user.id
+    text = (update.message.text or "").strip()
 
-    if step is None:
+    state = USER_STATE.get(user_id)
+
+    # ─────────────
+    # 1. СТАРТ
+    # ─────────────
+    if state is None:
         if text == "📖 Отправить цитату":
-            context.user_data["step"] = "quote"
+            USER_STATE[user_id] = {"step": "quote"}
             await update.message.reply_text("Отправь цитату ✍️")
         else:
             await update.message.reply_text("Нажми кнопку 📖 «Отправить цитату»")
         return
 
-    if step == "quote":
-        if not text.strip():
-            return
-        context.user_data["quote_text"] = text.strip()
-        context.user_data["step"] = "source"
+    # ─────────────
+    # 2. ЦИТАТА
+    # ─────────────
+    if state["step"] == "quote":
+        USER_STATE[user_id]["quote"] = text
+        USER_STATE[user_id]["step"] = "source"
         await update.message.reply_text("Из какой это книги? 📚")
         return
 
-    if step == "source":
-        quote = context.user_data.get("quote_text", "")
-        source = text.strip()
+    # ─────────────
+    # 3. КНИГА + ОТПРАВКА
+    # ─────────────
+    if state["step"] == "source":
+        quote = state.get("quote", "")
+        source = text
 
         await context.bot.send_message(
             chat_id=YOUR_CHAT_ID,
@@ -66,8 +76,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         await update.message.reply_text("Цитата отправлена ✨")
-        context.user_data.clear()
 
+        USER_STATE.pop(user_id, None)
 # ─────────────────────────────
 # TELEGRAM APP
 # ─────────────────────────────
