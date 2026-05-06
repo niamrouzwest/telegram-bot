@@ -8,11 +8,13 @@ from telegram.ext import (
     filters,
 )
 
-TOKEN = "8601228433:AAHcShB35RepfaLPyGU2y-thhDoCiWwH0PQ"
-YOUR_CHAT_ID = 164564542
+import os
+
+TOKEN = os.environ["BOT_TOKEN"]
+YOUR_CHAT_ID = int(os.environ["CHAT_ID"])
+BASE_URL = os.environ["BASE_URL"]
 
 PORT = int(os.environ.get("PORT", 10000))
-BASE_URL = "https://telegram-bot-12cf.onrender.com"
 
 USER_STATE = {}
 
