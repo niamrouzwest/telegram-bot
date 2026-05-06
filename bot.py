@@ -28,7 +28,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "📚 <a href='https://t.me/bombooklovers'>BOM: Booklovers Of Moldova</a>\n\n"
         "Здесь можно оставить цитату, которая зацепила, согрела или не отпускает.\n"
         "Нажми кнопку ниже ✍️",
-        reply_markup=markup
+        reply_markup=markup,
+        parse_mode="HTML"
     )
 
 
