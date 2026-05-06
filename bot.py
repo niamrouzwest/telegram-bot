@@ -1,7 +1,5 @@
 import os
-import threading
-import asyncio
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from flask import Flask, request
 
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import (
@@ -15,28 +13,16 @@ from telegram.ext import (
 TOKEN = "8601228433:AAHcShB35RepfaLPyGU2y-thhDoCiWwH0PQ"
 YOUR_CHAT_ID = 164564542
 
+# Render даёт порт через переменную окружения
+PORT = int(os.environ.get("PORT", 10000))
+
+app_flask = Flask(__name__)
+
 keyboard = [["📖 Отправить цитату"]]
 markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 # ─────────────────────────────
-# 🔥 WEB SERVER (для Render)
-# ─────────────────────────────
-class HealthHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
-        self.wfile.write(b"OK")
-
-def run_server():
-    port = int(os.environ.get("PORT", 10000))
-    server = HTTPServer(("0.0.0.0", port), HealthHandler)
-    server.serve_forever()
-
-threading.Thread(target=run_server, daemon=True).start()
-
-# ─────────────────────────────
-# START
+# TELEGRAM LOGIC
 # ─────────────────────────────
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
@@ -50,9 +36,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="HTML"
     )
 
-# ─────────────────────────────
-# MAIN LOGIC
-# ─────────────────────────────
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     step = context.user_data.get("step")
@@ -68,7 +51,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if step == "quote":
         if not text.strip():
             return
-
         context.user_data["quote_text"] = text.strip()
         context.user_data["step"] = "source"
         await update.message.reply_text("Из какой это книги? 📚")
@@ -87,25 +69,37 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data.clear()
 
 # ─────────────────────────────
-# 🔥 УСТОЙЧИВЫЙ ЗАПУСК (ГЛАВНЫЙ ФИКС)
+# TELEGRAM APP
 # ─────────────────────────────
-async def run_bot():
-    app = Application.builder().token(TOKEN).build()
+application = Application.builder().token(TOKEN).build()
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+application.add_handler(CommandHandler("start", start))
+application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    while True:
-        try:
-            print("Bot is running...")
-            await app.run_polling(drop_pending_updates=True)
-        except Exception as e:
-            print(f"Ошибка: {e}")
-            print("Перезапуск через 5 секунд...")
-            await asyncio.sleep(5)
+# ─────────────────────────────
+# WEBHOOK ROUTES
+# ─────────────────────────────
+@app_flask.route("/", methods=["GET"])
+def home():
+    return "Bot is running", 200
 
-def main():
-    asyncio.run(run_bot())
+@app_flask.route("/webhook", methods=["POST"])
+async def webhook():
+    data = request.get_json(force=True)
+    update = Update.de_json(data, application.bot)
+    await application.process_update(update)
+    return "ok"
 
+# ─────────────────────────────
+# START
+# ─────────────────────────────
 if __name__ == "__main__":
-    main()
+    import asyncio
+
+    async def setup():
+        await application.initialize()
+        await application.start()
+
+    asyncio.run(setup())
+
+    app_flask.run(host="0.0.0.0", port=PORT)
