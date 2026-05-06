@@ -25,11 +25,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     USER_STATE.pop(update.effective_user.id, None)
 
     await update.message.reply_text(
-        "📖 Добро пожаловать в тихое место для слов - Цитаты недели\n"
+       "📖 Добро пожаловать в тихое место для слов - Цитаты недели\n"
         "📚 <a href='https://t.me/bombooklovers'>BOM: Booklovers Of Moldova</a>\n\n"
         "Здесь можно оставить цитату, которая зацепила, согрела или не отпускает.\n"
         "Нажми кнопку ниже ✍️",
-        reply_markup=markup
+        reply_markup=markup,
     )
 
 
@@ -57,7 +57,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await context.bot.send_message(
             chat_id=YOUR_CHAT_ID,
-            text=f"📩 Новая цитата:\n\n{quote}\n\n📚 {source}"
+            text=f"📩 Новая цитата:\n\n{quote}\n\n📚 {source}",
         )
 
         await update.message.reply_text("Цитата отправлена ✨")
@@ -72,17 +72,9 @@ application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
 
-# ───────────── WEBHOOK MODE (ВАЖНОЕ ЯДРО) ─────────────
-
-async def post_init(app: Application):
-    await app.bot.set_webhook(f"{BASE_URL}/webhook")
-
-
-# ───────────── RUN ─────────────
+# ───────────── WEBHOOK MODE (ПРАВИЛЬНО) ─────────────
 
 if __name__ == "__main__":
-    application.post_init = post_init
-
     application.run_webhook(
         listen="0.0.0.0",
         port=PORT,
