@@ -42,10 +42,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     state = USER_STATE.get(user_id)
 
     if state is None:
-        if text == "📖 Отправить цитату":
-            USER_STATE[user_id] = {"step": "quote"}
-            await update.message.reply_text("Отправь цитату ✍️")
-        return
+    if text == "📖 Отправить цитату":
+        USER_STATE[user_id] = {"step": "quote"}
+        await update.message.reply_text("Отправь цитату ✍️")
+    else:
+        await update.message.reply_text(
+            "Чтобы отправить цитату, нажми кнопку 📖 «Отправить цитату»",
+            reply_markup=markup
+        )
+    return
 
     if state["step"] == "quote":
         USER_STATE[user_id]["quote"] = text
