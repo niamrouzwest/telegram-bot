@@ -1,5 +1,6 @@
 import os
 import threading
+import asyncio
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from telegram import Update, ReplyKeyboardMarkup
@@ -18,7 +19,7 @@ keyboard = [["📖 Отправить цитату"]]
 markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 # ─────────────────────────────
-# 🔥 WEB SERVER (ДЛЯ RENDER PORT CHECK)
+# 🔥 WEB SERVER (для Render)
 # ─────────────────────────────
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -65,6 +66,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if step == "quote":
+        if not text.strip():
+            return
+
         context.user_data["quote_text"] = text.strip()
         context.user_data["step"] = "source"
         await update.message.reply_text("Из какой это книги? 📚")
@@ -83,16 +87,25 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data.clear()
 
 # ─────────────────────────────
-# MAIN
+# 🔥 УСТОЙЧИВЫЙ ЗАПУСК (ГЛАВНЫЙ ФИКС)
 # ─────────────────────────────
-def main():
+async def run_bot():
     app = Application.builder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    print("Bot is running...")
-    app.run_polling(drop_pending_updates=True)
+    while True:
+        try:
+            print("Bot is running...")
+            await app.run_polling(drop_pending_updates=True)
+        except Exception as e:
+            print(f"Ошибка: {e}")
+            print("Перезапуск через 5 секунд...")
+            await asyncio.sleep(5)
+
+def main():
+    asyncio.run(run_bot())
 
 if __name__ == "__main__":
     main()
