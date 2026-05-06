@@ -92,8 +92,8 @@ def webhook():
         data = request.get_json(force=True)
         update = Update.de_json(data, application.bot)
 
-        import asyncio
-        asyncio.create_task(application.process_update(update))
+        # ✔️ СИНХРОННО И БЕЗ asyncio
+        application.update_queue.put_nowait(update)
 
         return "ok", 200
 
