@@ -1,5 +1,7 @@
 import os
+import threading
 from flask import Flask, request
+
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 
@@ -25,8 +27,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "📚 <a href='https://t.me/bombooklovers'>BOM: Booklovers Of Moldova</a>\n\n"
         "Здесь можно оставить цитату, которая зацепила, согрела или не отпускает.\n"
         "Нажми кнопку ниже ✍️",
-        reply_markup=markup,
-        parse_mode="HTML"
+        reply_markup=markup
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -56,7 +57,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text=f"{quote}\n\n📚 {source}"
         )
 
-        await update.message.reply_text("Цитата отправлена ✨")
+        await update.message.reply_text("Готово ✨")
         USER_STATE.pop(user_id, None)
 
 # ───────────── Application ─────────────
@@ -65,7 +66,7 @@ application = Application.builder().token(TOKEN).build()
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-# ───────────── webhook bridge ─────────────
+# ───────────── WEB SERVER (ВАЖНО) ─────────────
 
 @app.route("/", methods=["GET"])
 def home():
@@ -73,17 +74,16 @@ def home():
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    try:
-        update = Update.de_json(request.get_json(force=True), application.bot)
-        application.update_queue.put_nowait(update)
-        return "ok", 200
-    except Exception as e:
-        print("ERROR:", repr(e))
-        return "error", 500
+    update = Update.de_json(request.get_json(force=True), application.bot)
+    application.update_queue.put_nowait(update)
+    return "ok"
 
 # ───────────── START ─────────────
 
+def run_bot():
+    application.run_polling()
+
 if __name__ == "__main__":
-    application.run_polling(
-        drop_pending_updates=True
-    )
+    threading.Thread(target=run_bot, daemon=True).start()
+
+    app.run(host="0.0.0.0", port=PORT)
