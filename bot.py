@@ -1,5 +1,4 @@
 import os
-from flask import Flask, request
 
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import (
@@ -14,8 +13,6 @@ TOKEN = "8601228433:AAHcShB35RepfaLPyGU2y-thhDoCiWwH0PQ"
 YOUR_CHAT_ID = 164564542
 
 PORT = int(os.environ.get("PORT", 10000))
-
-app_flask = Flask(__name__)
 
 USER_STATE = {}
 
@@ -43,6 +40,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     state = USER_STATE.get(user_id)
 
+    # старт сценария
     if state is None:
         if text == "📖 Отправить цитату":
             USER_STATE[user_id] = {"step": "quote"}
@@ -51,12 +49,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("Нажми кнопку 📖 «Отправить цитату»")
         return
 
+    # шаг 1 — цитата
     if state["step"] == "quote":
         USER_STATE[user_id]["quote"] = text
         USER_STATE[user_id]["step"] = "source"
         await update.message.reply_text("Из какой это книги? 📚")
         return
 
+    # шаг 2 — книга + отправка
     if state["step"] == "source":
         quote = state.get("quote", "")
         source = text
@@ -74,34 +74,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # APP
 # ─────────────────────────────
 application = Application.builder().token(TOKEN).build()
+
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
 # ─────────────────────────────
-# WEBHOOK SETUP (ПРАВИЛЬНЫЙ)
-# ─────────────────────────────
-@app_flask.route("/", methods=["GET"])
-def home():
-    return "Bot is running", 200
-
-
-@app_flask.route("/webhook", methods=["POST"])
-def webhook():
-    try:
-        data = request.get_json(force=True)
-        update = Update.de_json(data, application.bot)
-
-        import asyncio
-        asyncio.create_task(application.process_update(update))
-
-        return "ok", 200
-
-    except Exception as e:
-        print("WEBHOOK ERROR:", repr(e))
-        return "error", 500
-
-# ─────────────────────────────
-# START
+# MAIN (ПРАВИЛЬНЫЙ WEBHOOK РЕЖИМ)
 # ─────────────────────────────
 if __name__ == "__main__":
-    app_flask.run(host="0.0.0.0", port=PORT)
+    application.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        webhook_url="https://telegram-bot-12cf.onrender.com/webhook"
+    )
