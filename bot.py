@@ -96,22 +96,19 @@ def home():
 @app_flask.route("/webhook", methods=["POST"])
 def webhook():
     try:
-        data = request.get_json(force=True)
-        update = Update.de_json(data, application.bot)
+        update = Update.de_json(request.get_json(force=True), application.bot)
 
-        import asyncio
+        # ВАЖНО: используем thread-safe вызов
+        import threading
 
-        loop = asyncio.get_event_loop()
-
-        if loop.is_running():
-            asyncio.create_task(application.process_update(update))
-        else:
-            loop.run_until_complete(application.process_update(update))
+        threading.Thread(
+            target=lambda: application.create_task(application.process_update(update))
+        ).start()
 
         return "ok", 200
 
     except Exception as e:
-        print("WEBHOOK ERROR:", e)
+        print("WEBHOOK ERROR:", repr(e))
         return "error", 500
 
 # ─────────────────────────────
