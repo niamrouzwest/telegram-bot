@@ -8,7 +8,7 @@ from telegram.ext import (
     filters,
 )
 
-TOKEN = "YOUR_TOKEN"
+TOKEN = "8601228433:AAHcShB35RepfaLPyGU2y-thhDoCiWwH0PQ"
 YOUR_CHAT_ID = 164564542
 
 PORT = int(os.environ.get("PORT", 10000))
@@ -25,9 +25,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     USER_STATE.pop(update.effective_user.id, None)
 
     await update.message.reply_text(
-        "📖 Цитаты недели\n\n"
-        "📚 BOM: Booklovers Of Moldova\n"
-        "https://t.me/bombooklovers\n\n"
+        "📖 Добро пожаловать в тихое место для слов - Цитаты недели\n"
+        "📚 <a href='https://t.me/bombooklovers'>BOM: Booklovers Of Moldova</a>\n\n"
+        "Здесь можно оставить цитату, которая зацепила, согрела или не отпускает.\n"
         "Нажми кнопку ниже ✍️",
         reply_markup=markup
     )
