@@ -1,6 +1,5 @@
 import os
 from flask import Flask, request
-USER_STATE = {}
 
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import (
@@ -14,10 +13,11 @@ from telegram.ext import (
 TOKEN = "8601228433:AAHcShB35RepfaLPyGU2y-thhDoCiWwH0PQ"
 YOUR_CHAT_ID = 164564542
 
-# Render даёт порт через переменную окружения
 PORT = int(os.environ.get("PORT", 10000))
 
 app_flask = Flask(__name__)
+
+USER_STATE = {}
 
 keyboard = [["📖 Отправить цитату"]]
 markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -26,7 +26,7 @@ markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 # TELEGRAM LOGIC
 # ─────────────────────────────
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data.clear()
+    USER_STATE.pop(update.effective_user.id, None)
 
     await update.message.reply_text(
         "📖 Добро пожаловать в тихое место для слов - Цитаты недели\n"
@@ -43,9 +43,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     state = USER_STATE.get(user_id)
 
-    # ─────────────
-    # 1. СТАРТ
-    # ─────────────
     if state is None:
         if text == "📖 Отправить цитату":
             USER_STATE[user_id] = {"step": "quote"}
@@ -54,18 +51,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("Нажми кнопку 📖 «Отправить цитату»")
         return
 
-    # ─────────────
-    # 2. ЦИТАТА
-    # ─────────────
     if state["step"] == "quote":
         USER_STATE[user_id]["quote"] = text
         USER_STATE[user_id]["step"] = "source"
         await update.message.reply_text("Из какой это книги? 📚")
         return
 
-    # ─────────────
-    # 3. КНИГА + ОТПРАВКА
-    # ─────────────
     if state["step"] == "source":
         quote = state.get("quote", "")
         source = text
@@ -78,49 +69,43 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Цитата отправлена ✨")
 
         USER_STATE.pop(user_id, None)
+
 # ─────────────────────────────
-# TELEGRAM APP
+# APP
 # ─────────────────────────────
 application = Application.builder().token(TOKEN).build()
-
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
 # ─────────────────────────────
-# WEBHOOK ROUTES
+# WEBHOOK SETUP (ПРАВИЛЬНЫЙ)
 # ─────────────────────────────
 @app_flask.route("/", methods=["GET"])
 def home():
     return "Bot is running", 200
 
+
 @app_flask.route("/webhook", methods=["POST"])
-def webhook():
-    try:
-        update = Update.de_json(request.get_json(force=True), application.bot)
-
-        # ВАЖНО: используем thread-safe вызов
-        import threading
-
-        threading.Thread(
-            target=lambda: application.create_task(application.process_update(update))
-        ).start()
-
-        return "ok", 200
-
-    except Exception as e:
-        print("WEBHOOK ERROR:", repr(e))
-        return "error", 500
+async def webhook():
+    update = Update.de_json(request.get_json(force=True), application.bot)
+    await application.process_update(update)
+    return "ok", 200
 
 # ─────────────────────────────
 # START
 # ─────────────────────────────
 if __name__ == "__main__":
+
     import asyncio
 
-    async def setup():
+    async def main():
         await application.initialize()
         await application.start()
 
-    asyncio.run(setup())
+        await application.bot.set_webhook(
+            url="https://telegram-bot-12cf.onrender.com/webhook"
+        )
 
-    app_flask.run(host="0.0.0.0", port=PORT)
+        app_flask.run(host="0.0.0.0", port=PORT)
+
+    asyncio.run(main())
