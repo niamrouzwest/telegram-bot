@@ -86,26 +86,22 @@ def home():
 
 
 @app_flask.route("/webhook", methods=["POST"])
-async def webhook():
-    update = Update.de_json(request.get_json(force=True), application.bot)
-    await application.process_update(update)
-    return "ok", 200
+def webhook():
+    try:
+        data = request.get_json(force=True)
+        update = Update.de_json(data, application.bot)
+
+        import asyncio
+        asyncio.create_task(application.process_update(update))
+
+        return "ok", 200
+
+    except Exception as e:
+        print("WEBHOOK ERROR:", repr(e))
+        return "error", 500
 
 # ─────────────────────────────
 # START
 # ─────────────────────────────
 if __name__ == "__main__":
-
-    import asyncio
-
-    async def main():
-        await application.initialize()
-        await application.start()
-
-        await application.bot.set_webhook(
-            url="https://telegram-bot-12cf.onrender.com/webhook"
-        )
-
-        app_flask.run(host="0.0.0.0", port=PORT)
-
-    asyncio.run(main())
+    app_flask.run(host="0.0.0.0", port=PORT)
